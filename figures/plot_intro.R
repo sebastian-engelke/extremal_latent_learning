@@ -1,6 +1,3 @@
-# install.packages("devtools")
-devtools::install_github("sebastian-engelke/graphicalExtremes")
-
 library(graphicalExtremes)
 library(igraph)
 library(tidyverse)

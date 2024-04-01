@@ -131,6 +131,7 @@ eglatent_path <- function(d = 30,
       )
     }
   }
+  return(list(F1_latent=F1_latent,rk=rk,loglik_latent_refit=loglik_latent_refit,F1_eglearn=F1_eglearn,loglik_eglearn=loglik_eglearn))
 }
 
 

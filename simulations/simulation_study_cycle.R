@@ -104,7 +104,7 @@ for (n_iter in 1:length(nvec)){
 }
 
 data<- tibble(F1score_cv = F1score_cv,  F1score_oracle =  F1score_oracle, rk_oracle = rk_oracle, rk_cv = rk_cv, likelihood_cv = likelihood_cv, F1score_eglearn_cv = F1score_eglearn_cv, F1score_eglearn_oracle = F1score_eglearn_oracle, likelihood_eglearn_cv = likelihood_eglearn_cv)
-save(data,file = "cycle_graph_data.Rda")              
+save(data,file = here("simulations/data/cycle_graph_data.Rdata"))              
               
 
 
