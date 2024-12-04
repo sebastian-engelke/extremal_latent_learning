@@ -1,3 +1,21 @@
+# install.packages("devtools")
+# devtools::install_github("sebastian-engelke/graphicalExtremes")
+
+library(graphicalExtremes)
+library(igraph)
+library(tidyverse)
+library(latex2exp)
+library(glmnet)
+library(egg)
+library(cowplot)
+library(tictoc)
+library(here)
+library(clusterGeneration)
+library(pracma)
+library(matrixcalc)
+library(CVXR)
+library(ggplot2)
+library(ggpubr)
 
 eglatent_path <- function(d = 30,
                           n = 1000,
@@ -155,6 +173,8 @@ generate_latent_model_random <- function(p, h) {
     L[(p + 1):(p + h), (p + 1):(p + h)] <- diag(h)
     
     
+
+    ## LARGER than 30 means stronger effect of latents, maybe change gamma (4/sqrt(h)???) and Gamma
     z <- 30/ (sqrt(as.integer(p / h))) * matrix(runif(as.integer(p / h), 1, 2), nrow = as.integer(p / h))
     
     for (i in 1:h) {

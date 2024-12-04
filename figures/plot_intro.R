@@ -1,22 +1,3 @@
-# install.packages("devtools")
-devtools::install_github("sebastian-engelke/graphicalExtremes")
-
-library(graphicalExtremes)
-library(igraph)
-library(tidyverse)
-library(latex2exp)
-library(glmnet)
-library(egg)
-library(cowplot)
-library(tictoc)
-library(here)
-library(clusterGeneration)
-library(pracma)
-library(matrixcalc)
-library(CVXR)
-library(ggplot2)
-library(ggpubr)
-
 source(here("functions/functions_paper.R"))
 figure_dest_folder <- here("figures/plots/")
 

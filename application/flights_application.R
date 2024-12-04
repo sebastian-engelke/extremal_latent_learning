@@ -1,5 +1,5 @@
 # install.packages("devtools")
-devtools::install_github("sebastian-engelke/graphicalExtremes")
+# devtools::install_github("sebastian-engelke/graphicalExtremes")
 
 library(graphicalExtremes)
 library(igraph)
@@ -71,8 +71,8 @@ empirical_test <- 0
 flight_test <- 0  
 
 # Probability threshold to define extremes
-p <- 0.85
 n <- nrow(mat)
+p <- 0.95 #1-n^0.65/n #0.85 
 k <- (1-p) * n
 d <- ncol(mat)
 
@@ -80,7 +80,7 @@ d <- ncol(mat)
 lambda1_range <- seq(0, .1, by = 0.01) # seq(0, 0.1, by = 0.002)
 ll <- length(lambda1_range)
 # Regularization parameter to enforce low-rank
-lambda2_range <- c(2) # 2 # seq(0, 0.3, by = 0.08) #seq(0, 0.3, by = 0.02)
+lambda2_range <- c(4) # 2 # seq(0, 0.3, by = 0.08) #seq(0, 0.3, by = 0.02)
 # for eglearn
 rholist <- lambda1_range
 
@@ -228,7 +228,7 @@ gg_both <- ggarrange(gg1, gg2, nrow=1, align = "hv")
 
 save_myplot(
   plt = gg_both,
-  plt_nm = paste0(figure_dest_folder, "sparsity_likelihoods", ".pdf"),
+  plt_nm = paste0(figure_dest_folder, "sparsity_likelihoods_p95", ".pdf"),
   width = 10,
   height = 5,
   cairo = FALSE
@@ -251,7 +251,7 @@ IATAs[which(nb_neighbor == max(nb_neighbor))]
 
 save_myplot(
   plt = gg3,
-  plt_nm = paste0(figure_dest_folder, "flights_latent", ".pdf"),
+  plt_nm = paste0(figure_dest_folder, "flights_latent_p95", ".pdf"),
   width = 5,
   height = 5,
   cairo = FALSE
@@ -271,7 +271,7 @@ gg4
 
 save_myplot(
   plt = gg4,
-  plt_nm = paste0(figure_dest_folder, "flights_eglearn", ".pdf"),
+  plt_nm = paste0(figure_dest_folder, "flights_eglearn_p95", ".pdf"),
   width = 5,
   height = 5,
   cairo = FALSE
