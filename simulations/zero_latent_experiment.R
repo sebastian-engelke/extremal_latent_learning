@@ -10,7 +10,7 @@ library(here)
 library(clusterGeneration)
 library(pracma)
 library(matrixcalc)
-library(CVXR)xw
+library(CVXR)
 
 
 
@@ -104,6 +104,9 @@ for (lambda_2_iter in 1:length(lambda_2_vec)){
 F1score_eglearn_cv_vec <- append(F1score_eglearn_cv_vec,list(F1score_eglearn_cv_temp))
 likelihood_eglearn_vec<-append(likelihood_eglearn_vec,list(likelihood_eglearn_vec_temp))
 sparsity_eglearn_vec<-append(sparsity_eglearn_vec,list(sparsity_eglearn_vec_temp))
+
+data<- tibble(F1score_cv_vec = F1score_cv_vec, rk_cv_vec = rk_cv_vec, likelihood_vec = likelihood_vec, F1score_eglearn_cv_vec = F1score_eglearn_cv_vec, likelihood_eglearn_vec = likelihood_eglearn_vec)
+save(data,file = here("simulations/data/data_zero_latent.Rdata"))              
 
 
 

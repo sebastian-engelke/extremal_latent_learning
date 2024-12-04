@@ -8,7 +8,6 @@ library(ggpubr)
 
 source(here("functions/functions_paper.R"))
 load(here("simulations/data/cycle_graph_data.Rdata"))
-#load(here("simulations/data/random_graph_data.Rdata"))
 
 
 
