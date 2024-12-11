@@ -92,15 +92,15 @@ set.seed(4134999)
 splitInd <- floor(nrow(mat) * 1 / 5)
 
 for (cvsplit in 1:5) {
-
+  
   print(cvsplit)
-
+  
   # Validation set for this iteration
   ValInd <- c((splitInd * (cvsplit - 1) + 1):(splitInd * cvsplit))
   matVal <- mat[ValInd, ]
   # Training set for this iteration
   matEst <- mat[setdiff(1:nrow(mat), ValInd), ]
-
+  
   # Normalize data to multivariate Pareto scale
   train_data <- data2mpareto(data = matEst, p = p)
   test_data <- data2mpareto(data = matVal, p = p)
@@ -108,7 +108,7 @@ for (cvsplit in 1:5) {
   # empirical variogram on training and test sets
   Gamma_train <- emp_vario(data = train_data)
   Gamma_test <- emp_vario(data = test_data)
-
+  
   # fit latent model
   fit_eglatent <- eglatent(
     Gamma = Gamma_train,
@@ -116,28 +116,28 @@ for (cvsplit in 1:5) {
     lam2_list = lambda2_range,
     refit = TRUE
   )
-
+  
   eglatent_test <- eglatent_test + sapply(1:(ll*length(lambda2_range)), FUN = function(i) {
     loglik_HR(data = test_data, Gamma = fit_eglatent$G_refit[[i]], cens = FALSE)[1]
   })
-
+  
   flight_test <- flight_test + loglik_HR(data = test_data, Gamma = complete_Gamma(Gamma = Gamma_train, graph = flight_graph), cens = FALSE)[1]
-
+  
   empirical_test <- empirical_test + loglik_HR(data = test_data, Gamma = Gamma_train, cens = FALSE)[1]
-
+  
   # fit eglearn model
-
+  
   fit_eglearn <- eglearn(
     data = train_data,
     rholist = rholist,
     reg_method = "ns",
     complete_Gamma = TRUE
   )
-
+  
   connected_eglearn <- sapply(1:ll, FUN = function(i) ifelse(is_connected(fit_eglearn$graph[[i]]), 1, 3))
-
+  
   eglearn_test <- eglearn_test + sapply(1:ll, FUN = 
-  function(i) ifelse(connected_eglearn[i] == 1, loglik_HR(data = test_data, Gamma = complete_Gamma(Gamma = Gamma_train, graph = fit_eglearn$graph[[i]]), cens = FALSE)[1], NA))
+                                          function(i) ifelse(connected_eglearn[i] == 1, loglik_HR(data = test_data, Gamma = complete_Gamma(Gamma = Gamma_train, graph = fit_eglearn$graph[[i]]), cens = FALSE)[1], NA))
 }
 
 
@@ -162,12 +162,12 @@ gg2 <- ggplot(dat) +
   geom_hline(yintercept = eglearn_test[1] /5, linetype = "longdash") +
   geom_line(aes(x = rholist, y = eglearn_test / 5), linetype = "dashed") +
   geom_point(aes(x = rholist, y = eglearn_test / 5), shape = 21, size = 3, stroke = 1, fill = "white") +
-   xlab(TeX("Regularization parameter $\\lambda_n$")) +
-    ylab("Log-likelihood") +
-    scale_x_continuous(
-      breaks = unique(round(rholist, 2)),
-      labels = unique(round(rholist, 2))
-    )
+  xlab(TeX("Regularization parameter $\\lambda_n$")) +
+  ylab("Log-likelihood") +
+  scale_x_continuous(
+    breaks = unique(round(rholist, 2)),
+    labels = unique(round(rholist, 2))
+  )
 gg2
 
 
@@ -210,17 +210,17 @@ gg1 <- ggplot(dat_sparse) +
   geom_point(aes(x = rholist, y = eglatent_edges), shape = 21, size = 3, stroke = 1, fill = "white") +
   geom_line(aes(x = rholist, y = eglearn_edges), linetype = "dashed") +
   geom_point(aes(x = rholist, y = eglearn_edges), shape = 21, size = 3, stroke = 1, fill = "white") +
-    xlab(TeX("Regularization parameter $\\lambda_n$")) +
-    ylab("Number of edges") +
-    scale_x_continuous(
-      breaks = unique(round(rholist, 2)),
-      labels = unique(round(rholist, 2)),
-      sec.axis = sec_axis(
-        trans = ~., breaks = rholist,
-        labels = eglatent_rk,
-        name = ""
-      )
+  xlab(TeX("Regularization parameter $\\lambda_n$")) +
+  ylab("Number of edges") +
+  scale_x_continuous(
+    breaks = unique(round(rholist, 2)),
+    labels = unique(round(rholist, 2)),
+    sec.axis = sec_axis(
+      trans = ~., breaks = rholist,
+      labels = eglatent_rk,
+      name = ""
     )
+  )
 
 gg1
 
@@ -276,5 +276,3 @@ save_myplot(
   height = 5,
   cairo = FALSE
 )
-
-

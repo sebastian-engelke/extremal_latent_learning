@@ -342,55 +342,6 @@ generate_latent_model_random <- function(p, h) {
 }
 
 
-generate_latent_model_random_checking_assumptions <- function(p, h) {
-  
-  max_degree <- 5
-  min_degree <- 1
-  non_pos_def<- TRUE
-  not_connected <- TRUE
-  cond_val <- 5
-  while (max_degree > 4 || min_degree <1  || cond_val > 3){
-    W <- matrix(1, p + h, p + h)
-    
-    S<-as.matrix(as.matrix(as.matrix(erdos.renyi.game(p,0.04))))
-    not_connected <- !(is_connected(graph_from_adjacency_matrix(S)))
-    max_degree <- max(rowSums(S))
-    min_degree <- min(rowSums(S))
-    
-    
-    W[1:p, 1:p] <- S
-    diag(W) <- 0
-    L <- matrix(runif((p + h)^2, 0.2, 0.2), nrow = p + h)
-    L[(p + 1):(p + h), (p + 1):(p + h)] <- diag(h)
-    
-    
-    z <- 4/ (sqrt(as.integer(p / h))) * matrix(runif(as.integer(p / h), 1, 2), nrow = as.integer(p / h))
-    
-    for (i in 1:h) {
-      L[1:p, (p + i):(p + i)] <- 0
-      L[(p + i):(p + i), 1:p] <- 0
-      F<-seq(i, p, h)
-      L[F[1:length(z)], (p + i):(p + i)] <- z
-      L[(p + i):(p + i), F[1:length(z)]] <- z
-    }
-    
-    W <- W * L
-    W[lower.tri(W)] <- t(W)[lower.tri(W)]
-    Theta <- diag(rowSums(W)) - W
-    non_pos_def <- (min(eig(Theta))< -10^(-6))
-    
-    Lst <- (Theta[1:p, ((p + 1):(p + h))]) %*% solve(Theta[(p + 1):(p + h), (p + 1):(p + h)]) %*% t((Theta[1:p, ((p + 1):(p + h))]))
-    inc <- max(diag(svd(Lst)$u[, 1:h] %*% t(svd(Lst)$u[, 1:h])))
-    G <- Theta2Gamma(Theta)  
-    Lst <- (Theta[1:p, ((p + 1):(p + h))]) %*% solve(Theta[(p + 1):(p + h), (p + 1):(p + h)]) %*% t((Theta[1:p, ((p + 1):(p + h))]))
-    U<-svd(matrix(1,p,p))$u[,2:(p)]
-    Theta_obs <- U%*%solve(t(U)%*%(-G[1:p,1:p]/2)%*%(U))%*%t(U)
-   cond_val <- cond(Theta_obs+1/p*matrix(1,p,p))
-  }
-
-  return(list(Gamma = G, graph = Gamma2graph(G), Lst = Lst,Theta=Theta))
-}
-
 
 
 
