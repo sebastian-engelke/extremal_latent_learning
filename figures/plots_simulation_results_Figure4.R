@@ -13,12 +13,11 @@ load(file=here("simulations/data/data_zero_latent.Rdata"))
 
 
 dat_lik <- bind_rows(
-  tibble(method = "gamma=1", val=data$likelihood_vec[[1]], nb_edges = mean(data$sparsity_vec[[1]])),
-  tibble(method = "gamma=2", val=data$likelihood_vec[[2]], nb_edges = mean(data$sparsity_vec[[2]])),
-  tibble(method = "gamma=3", val=data$likelihood_vec[[3]], nb_edges = mean(data$sparsity_vec[[3]])),
-  tibble(method = "gamma=4", val=data$likelihood_vec[[4]], nb_edges = mean(data$sparsity_vec[[4]])),  
-  tibble(method = "eglearn", val=data$likelihood_eglearn_vec[[1]], nb_edges = mean(data$sparsity_eglearn_vec[[1]]))
-)
+  tibble(method = "gamma=1", val=data$likelihood_vec[[1]], nb_edges = mean(data$sparsity_vec[[1]])*(d*(d-1)/2)),
+  tibble(method = "gamma=2", val=data$likelihood_vec[[2]], nb_edges = mean(data$sparsity_vec[[2]])*(d*(d-1)/2)),
+  tibble(method = "gamma=3", val=data$likelihood_vec[[3]], nb_edges = mean(data$sparsity_vec[[3]])*(d*(d-1)/2)),
+  tibble(method = "gamma=4", val=data$likelihood_vec[[4]], nb_edges = mean(data$sparsity_vec[[4]])*(d*(d-1)/2)),  
+  tibble(method = "eglearn", val=data$likelihood_eglearn_vec[[1]], nb_edges = mean(data$sparsity_eglearn_vec[[1]])*(d*(d-1)/2)))
 
 
 dat_lik <- dat_lik %>%
@@ -52,12 +51,12 @@ gg_lik <- ggplot(dat_lik) +
   geom_text(
     data = dat_lik_means,
     aes(
-      x = method, y = -46500, # !!! specify the height for y ticks on top
+      x = method, y = -3000, # !!! specify the height for y ticks on top
       label = mean_nb_edges
     ),
     size = 3, color = "black"
   ) +
-  coord_cartesian(ylim = c(-52000, -46900), clip = "off") + # !!! specify where plot frame stops
+  coord_cartesian(ylim = c(-4400, -3000), clip = "on") + # !!! specify where plot frame stops
   theme(plot.margin = unit(c(2, 1, 1, 1), "lines"))
 
 gg_lik
@@ -104,12 +103,12 @@ gg_F1 <- ggplot(dat_F1) +
   geom_text(
     data = dat_F1_means,
     aes(
-      x = method, y = 1.05, # !!! specify the height for y ticks on top
+      x = method, y = 1, # !!! specify the height for y ticks on top
       label = mean_rank
     ),
     size = 3, color = "black"
   ) +
-  coord_cartesian(ylim = c(.4, 1), clip = "off") + # !!! specify where plot frame stops
+  coord_cartesian(ylim = c(0, 1), clip = "off") + # !!! specify where plot frame stops
   theme(plot.margin = unit(c(2, 1, 1, 1), "lines"))
 
 gg_F1

@@ -1,3 +1,6 @@
+## stability to the choice of \gamma
+
+
 library(graphicalExtremes)
 library(igraph)
 library(tidyverse)
@@ -22,11 +25,11 @@ method="maxstable"
 gen_model ="latent_cycle" # latent model with a cycle graph
 d = 30 # number of observed variables
 ratio <- 0.65 # k = n^ratio where k is the effective sample size
-nvec <- rev(as.integer(c(exp(log(200)/ratio),exp(log(1000)/ratio),exp(log(5000)/ratio))))
+nvec <- rev(as.integer(c(exp(log(1000)/ratio))))
 hvec <- c(1,2,3) # number of latent variables
 m = 1
 plot_result = FALSE
-lambda_2<- 4# gamma for eglatent
+lambda_2_vec<- c(2,4,6)# gamma for eglatent
 num_iter <- 50 # number of iterations
 
 F1score_cv <- list()
@@ -38,7 +41,8 @@ F1score_eglearn_oracle <- list()
 likelihood_cv <- list()
 likelihood_eglearn_cv <- list()
 
-
+for (lambda_2_iter in 1:length(lambda_2_vec)){
+  lambda_2 <- lambda_2_vec[lambda_2_iter]
 for (n_iter in 1:length(nvec)){
   n <- nvec[n_iter]
   for (h_iter in 1:length(hvec)){
@@ -60,17 +64,17 @@ for (n_iter in 1:length(nvec)){
       print(iter)
       # runs both the estimator without latent variables and the estimator with latent variables for range of regularization parameters
       output <- eglatent_path(d = d, n = n, p=1-n^ratio/n,h = h, m = m, lambda_2 = lambda_2, rholist = rholist, method=method, gen_model =gen_model, val_set = TRUE,plot_result = plot_result,alpha = alpha)
-
-
+      
+      
       ##### extracting and analyzing results for the latent model
       likelihood<-output$loglik_latent_refit # likelihood scores of the models learned on validation data of same size
       F1_latent<-output$F1_latent # F1 of graph structure
       rk<-output$rk # number of latent variables
-    
+      
       # F1 score across the 50 trials
       F1score_cv_vec<-append(F1score_cv_vec,F1_latent[which.max(likelihood)])
       F1score_oracle_vec <- append(F1score_oracle_vec,max(F1_latent))
-
+      
       # rank across the 50 trials
       rk_cv_vec <- append(rk_cv_vec,rk[which.max(likelihood)])
       rk_oracle_vec <- append(rk_oracle_vec,rk[which.max(F1_latent)])
@@ -99,12 +103,13 @@ for (n_iter in 1:length(nvec)){
     F1score_eglearn_cv <- append(F1score_eglearn_cv,list(F1score_eglearn_cv_vec))
     F1score_eglearn_oracle <- append(F1score_eglearn_oracle,list(F1score_eglearn_oracle_vec))
     likelihood_eglearn_cv<-append(likelihood_eglearn_cv,list(likelihood_eglearn_vec))
-  
+    
   }
 }
 
+}
 data<- tibble(F1score_cv = F1score_cv,  F1score_oracle =  F1score_oracle, rk_oracle = rk_oracle, rk_cv = rk_cv, likelihood_cv = likelihood_cv, F1score_eglearn_cv = F1score_eglearn_cv, F1score_eglearn_oracle = F1score_eglearn_oracle, likelihood_eglearn_cv = likelihood_eglearn_cv)
-save(data,file = here("simulations/data/cycle_graph_data_k0.65.Rdata"))              
-              
+save(data,file = here("simulations/data/robustness_to_gamma.Rdata"))              
+
 
 

@@ -16,12 +16,11 @@ library(CVXR)
 
 source(here("functions/functions_paper.R"))
 
-
 set.seed(123)
 d<-20 # number of observed variables 
 
-ratio <- 0.7 # k = n^ratio where k is the effective sample size
-n <- as.integer(c(exp(log(2000)/ratio)))
+ratio <- 0.65 # k = n^ratio where k is the effective sample size
+nvec<- as.integer(c(exp(log(200)/ratio),exp(log(1000)/ratio)))
 rholist <- append(seq(0.0001, 0.001, length.out = 10),seq(0.001, 0.05, length.out = 20)); # this represents sequence of \lambda_n for eglatent and rho for eglearn
 alpha = 4 # how much rho gets scaled for eglearn
 method="maxstable"
@@ -55,7 +54,9 @@ likelihood_eglearn_vec<-list()
 sparsity_vec <- list()
 sparsity_eglearn_vec <- list()
 
-
+for (niter in 1:length(nvec)){
+  
+n<-nvec[niter]
 for (lambda_2_iter in 1:length(lambda_2_vec)){
   lambda_2 <- lambda_2_vec[lambda_2_iter]
   likelihood_vec_temp<-  c()
@@ -67,18 +68,18 @@ for (lambda_2_iter in 1:length(lambda_2_vec)){
   sparsity_eglearn_vec_temp <- c()
   
   for (iter_ind in 1:num_iter){
-   
-
-      # runs both the estimator without latent variables and the estimator with latent variables for range of regularization parameters
-      output <- eglatent_path(d = d, n=n, p=p, m = m, h=h, lambda_2 = lambda_2, rholist = rholist, method=method, gen_model = gen_model, val_set = val_set,alpha = 4,BA_model = BA_model)
-      
-      ##### extracting and analyzing results for the latent model
-      likelihood<- output$loglik_latent_refit # likelihood scores of the models learned on validation data of same size
-      F1_latent<- output$F1_latent # F1 of graph structure
-      rk_output<- output$rk[which.max(likelihood)] # number of latent variables
-      sparsity<- output$sparse_latent
-      
-     
+    
+    
+    # runs both the estimator without latent variables and the estimator with latent variables for range of regularization parameters
+    output <- eglatent_path(d = d, n=n, p=p, m = m, h=h, lambda_2 = lambda_2, rholist = rholist, method=method, gen_model = gen_model, val_set = val_set,alpha = 4,BA_model = BA_model)
+    
+    ##### extracting and analyzing results for the latent model
+    likelihood<- output$loglik_latent_refit # likelihood scores of the models learned on validation data of same size
+    F1_latent<- output$F1_latent # F1 of graph structure
+    rk_output<- output$rk[which.max(likelihood)] # number of latent variables
+    sparsity<- output$sparse_latent
+    
+    
     # score across different lambda_2
     likelihood_vec_temp<-  append(likelihood_vec_temp,max(likelihood))
     F1score_cv_vec_temp <-append(F1score_cv_vec_temp,F1_latent[which.max(likelihood)])
@@ -100,13 +101,11 @@ for (lambda_2_iter in 1:length(lambda_2_vec)){
   likelihood_vec <- append(likelihood_vec,list(likelihood_vec_temp))
   sparsity_vec <- append(sparsity_vec,list(sparsity_vec_temp))
   
+  F1score_eglearn_cv_vec <- append(F1score_eglearn_cv_vec,list(F1score_eglearn_cv_temp))
+  likelihood_eglearn_vec<-append(likelihood_eglearn_vec,list(likelihood_eglearn_vec_temp))
+  sparsity_eglearn_vec<-append(sparsity_eglearn_vec,list(sparsity_eglearn_vec_temp))
+  
 }
-F1score_eglearn_cv_vec <- append(F1score_eglearn_cv_vec,list(F1score_eglearn_cv_temp))
-likelihood_eglearn_vec<-append(likelihood_eglearn_vec,list(likelihood_eglearn_vec_temp))
-sparsity_eglearn_vec<-append(sparsity_eglearn_vec,list(sparsity_eglearn_vec_temp))
-
-data<- tibble(F1score_cv_vec = F1score_cv_vec, rk_cv_vec = rk_cv_vec, likelihood_vec = likelihood_vec, F1score_eglearn_cv_vec = F1score_eglearn_cv_vec, likelihood_eglearn_vec = likelihood_eglearn_vec)
+}
+data<- tibble(F1score_cv_vec = F1score_cv_vec, sparsity_vec = sparsity_vec,rk_cv_vec = rk_cv_vec, likelihood_vec = likelihood_vec, F1score_eglearn_cv_vec = F1score_eglearn_cv_vec, likelihood_eglearn_vec = likelihood_eglearn_vec,sparsity_eglearn_vec=sparsity_eglearn_vec)
 save(data,file = here("simulations/data/data_zero_latent.Rdata"))              
-
-
-

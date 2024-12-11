@@ -29,8 +29,8 @@ set.seed(333242)
 
 d <- 30 # number of observed nodes
 k <- 5000 # number of effective extreme samples
-n <- floor(k^{1/.7})
-p <- 1 - n^0.7 / n
+n <- floor(k^{1/.65})
+p <- 1 - n^0.65 / n
 m <- 2
 h <- 2 # number of latent variables
 rholist <- seq(0.0001, .05, length.out = 15) # this represents sequence of \lambda_n for eglatent and rho for eglearn

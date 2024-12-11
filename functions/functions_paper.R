@@ -131,7 +131,150 @@ eglatent_path <- function(d = 30,
       )
     }
   }
-  return(list(F1_latent=F1_latent,rk=rk,loglik_latent_refit=loglik_latent_refit,F1_eglearn=F1_eglearn,loglik_eglearn=loglik_eglearn))
+  return(list(F1_latent=F1_latent,rk=rk,loglik_latent_refit=loglik_latent_refit,F1_eglearn=F1_eglearn,loglik_eglearn=loglik_eglearn,sparse_latent=sparse_latent,sparse_eglearn,data_train = X, data_val = X_val))
+}
+
+
+check_assumptions <- function(p, h,latent_strength,edge_strength,rho,eps) {
+  
+  W <- matrix(1, p + h, p + h)
+  
+  S<-as.matrix(as.matrix(as.matrix(erdos.renyi.game(p,rho))))
+  not_connected <- !(is_connected(graph_from_adjacency_matrix(S)))
+  max_degree <- max(rowSums(S))
+  min_degree <- min(rowSums(S))
+  
+  
+  W[1:p, 1:p] <- S  
+  diag(W) <- 0
+  L <- matrix(runif((p + h)^2, edge_strength, edge_strength), nrow = p + h)
+  if(h!=0){
+    L[(p + 1):(p + h), (p + 1):(p + h)] <- diag(h)
+    
+    
+    z <- latent_strength/ (sqrt(as.integer(p / h))) * matrix(runif(as.integer(p / h), 1,1+eps), nrow = as.integer(p / h))
+    
+    
+    for (i in 1:h) {
+      L[1:p, (p + i):(p + i)] <- 0
+      L[(p + i):(p + i), 1:p] <- 0
+      L[seq(i, p, h), (p + i):(p + i)] <- z
+      L[(p + i):(p + i), seq(i, p, h)] <- z
+    }
+  }
+  W <- W * L
+  W[lower.tri(W)] <- t(W)[lower.tri(W)]
+  Theta <- diag(rowSums(W)) - W
+  G <- Theta2Gamma(Theta)
+  
+  
+  U<-svd(matrix(1,p,p))$u[,2:(p)]
+  Theta_obs <- U%*%solve(t(U)%*%(-G[1:p,1:p]/2)%*%(U))%*%t(U)
+  
+  
+  
+  S <- Theta[1:p,1:p]
+  L<- S-Theta_obs
+  
+  ## obtain the Hessian matrix
+  Hess <- kron(solve(Theta_obs+1/p*matrix(1,p,p)),solve(Theta_obs+1/p*matrix(1,p,p)))
+  P_C <- Reshape(svd(L)$u[,1:h],p,h)%*%t(Reshape(svd(L)$u[,1:h],p,h)) # column space
+  P_T <- kron(P_C,eye(p)) + kron(eye(p),P_C)-kron(P_C,P_C) # subspace of the true low-rank term
+  U <- svd(cbind(svd(L)$u[,1:p],1/sqrt(p)*matrix(1,p,1)))$u
+  P_Tp1 <- diag(p^2)-kron(U[,(h+1):p]%*%t(U[,(h+1):p]),U[,(h+1):p]%*%t(U[,(h+1):p]))
+  
+  ind <- which(Reshape(abs(S),p^2,1)>=10^(-4));temp <- matrix(1,p^2,1);temp[setdiff(1:p^2,ind)]<-0;P_S <- diag(as.numeric(temp)) # subpsace of the sparse term
+  ind2 <- which(Reshape(abs(S),p^2,1)>=10^(-4));temp <- matrix(1,p^2,1);temp[setdiff(1:p^2,ind2)]<-0;P_Sperp <- diag(p^2)-diag(as.numeric(temp))
+  degree <- max(rowSums(abs(S)>10^(-5)))
+  inc_star <- 2*sqrt(max(diag(P_C)))
+  kappa_star <- irlba((diag(p)-P_C)%*%(matrix(1,p,p)/p)%*%(diag(p)-P_C),1,1)$d[1] #kappa_star quantity
+  omega <- 0.00001
+  
+  gamma <- seq(0.5,5,0.05)
+  M <- matrix(0,2*p^2,2*p^2); M[1:p^2,1:p^2] = P_S; M[seq((p^2+1),2*p^2,1), seq((p^2+1),2*p^2,1)]<- P_T
+  A <- matrix(0,p^2,2*p^2); A[1:p^2,1:p^2]<- diag(p^2); A[1:p^2,seq((p^2+1),2*p^2,1)]<- diag(p^2); Adj <- matrix(0,2*p^2,p^2); Adj[1:p^2,1:p^2]<-diag(p^2); Adj[seq((p^2+1),2*p^2,1),1:p^2]<-diag(p^2)
+  M_perp <- matrix(0,2*p^2,2*p^2); M_perp[1:p^2,1:p^2] = (diag(p^2)-P_S); M_perp[seq((p^2+1),2*p^2,1), seq((p^2+1),2*p^2,1)]<- diag(p^2)-P_Tp1
+  M_all_ones <- matrix(0,2*p^2,2*p^2); M_all_ones[1:p^2,1:p^2] <- P_S; M_all_ones[seq((p^2+1),2*p^2,1),seq((p^2+1),2*p^2,1)]<-P_Tp1
+  rank_all <- sum(diag(P_S + P_Tp1))
+  temp_svd <- irlba(M_all_ones%*%Adj%*%Hess%*%A%*%M_all_ones,rank_all+5,rank_all+5)
+  H_new <- (M_perp%*%Adj%*%Hess%*%A%*%M_all_ones)%*%((temp_svd$u[,1:rank_all])%*%solve(diag(temp_svd$d[1:rank_all]))%*%t(temp_svd$v[,1:rank_all]))
+  H_temp<-(M_perp%*%Adj%*%Hess%*%A%*%M_all_ones)
+  
+  V<- svd((diag(p)-P_C)%*%matrix(1,p,p))$u;N3<- matrix(0,2*p^2,2*p^2); N3[seq((p^2+1),2*p^2,1),seq((p^2+1),2*p^2,1)]<-kron(V[,1]%*%t(V[,1]),V[,1]%*%t(V[,1]))
+  H_temp <- (M%*%Adj%*%Hess%*%A%*%M_perp%*%N3)
+  
+  
+  T_T <- c()
+  Omega_T <- c()
+  T_Omega <- c()
+  Omega_Omega <- c()
+  Tperp_T <- c()
+  Tperp_Omega <- c()
+  Omegaperp_Omega <- c()
+  Omegaperp_T <- c()
+  
+  Omegaperp_Omega_non_inverse <- c()
+  Omegaperp_T_non_inverse <- c()
+  Tperp_T_non_inverse <- c()
+  Tperp_Omega_non_inverse <- c()
+  
+  for (i in 1:1000){
+    t1 <- matrix(rnorm(p*h),p,h)
+    t2 <- matrix(rnorm(p*h),h,p)
+    a <- rnorm(1)
+    t3 <- matrix(rnorm(p^2),p,p); t3[setdiff(1:p^2,ind)]<-0; t3 <- t3/max(abs(t3));
+    
+    F <- Reshape(svd(S-Theta_obs)$u[,1:h],p,h)%*%t2 + t1%*%t(svd(S-Theta_obs)$u[,1:h])+a/p*matrix(1,p,p); F<-F/irlba(F,1,1)$d[1]
+    L <- solve(Theta_obs+1/p*matrix(1,p,p))%*%F%*%solve(Theta_obs+1/p*matrix(1,p,p))
+    #L <- L-diag(diag(L))
+    T_T <- append(T_T,irlba(L-(U[,(h+1):p]%*%t(U[,(h+1):p]))%*%L%*%(U[,(h+1):p]%*%t(U[,(h+1):p])),1,1)$d[1])
+    Omega_T <- append(Omega_T,max(abs(L[ind])))
+    L<- solve(Theta_obs+1/p*matrix(1,p,p))%*%t3%*%solve(Theta_obs+1/p*matrix(1,p,p))
+    #L <- L-diag(diag(L))
+    Omega_Omega <-append(Omega_Omega,max(abs(L[ind])))
+    T_Omega <- append(T_Omega,irlba(L -(U[,(h+1):p]%*%t(U[,(h+1):p]))%*%L%*%(U[,(h+1):p]%*%t(U[,(h+1):p])),1,1)$d[1])
+    
+    
+    Omegaperp_T <- append(Omegaperp_T,max(abs(H_new[1:p^2,seq((p^2+1),2*p^2,1)]%*%Reshape(F,p^2,1))))
+    Omegaperp_Omega <-append(Omegaperp_Omega,max(abs(H_new[1:p^2,1:p^2]%*%Reshape(t3,p^2,1))))
+    Tperp_Omega<- append(Tperp_Omega,irlba(Reshape(H_new[seq((p^2+1),2*p^2,1),1:p^2]%*%Reshape(t3,p^2,1),p,p),1,1)$d[1])
+    Tperp_T <- append(Tperp_T,irlba(Reshape(H_new[seq((p^2+1),2*p^2,1),seq((p^2+1),2*p^2,1)]%*%Reshape(F,p^2,1),p,p),1,1)$d[1])
+    
+    
+    Omegaperp_Omega_non_inverse <- append(Omegaperp_Omega_non_inverse,max(abs(H_temp[1:p^2,1:p^2]%*%Reshape(t3,p^2,1))))
+    Omegaperp_T_non_inverse <- append(Omegaperp_T_non_inverse,max(abs(H_temp[1:p^2,seq((p^2+1),2*p^2,1)]%*%Reshape(F,p^2,1))))
+    Tperp_T_non_inverse <-append(Tperp_T_non_inverse,svd(Reshape(H_temp[seq((p^2+1),2*p^2,1),1:p^2]%*%Reshape(t3,p^2,1),p,p))$d[1])
+    Tperp_Omega_non_inverse <- append(Tperp_Omega_non_inverse,irlba(Reshape(H_temp[seq((p^2+1),2*p^2,1),seq((p^2+1),2*p^2,1)]%*%Reshape(F,p^2,1),p,p),1,1)$d[1])
+    
+  }
+  
+  alpha_all_ones <- pmin(min(Omega_Omega)-max(Omega_T)*gamma,min(T_T)-max(T_Omega)/gamma)
+  delta <- pmax(max(Omegaperp_Omega)+gamma*max(Omegaperp_T),max(Tperp_T)+max(Tperp_Omega)/gamma)
+  delta_2<- pmax(max(Omegaperp_Omega_non_inverse)+gamma*max(Omegaperp_T_non_inverse),max(Tperp_T_non_inverse)+max(Tperp_Omega_non_inverse)/gamma)
+  
+  alpha_tilde <-(1-(4*kappa_star+5*omega))*alpha_all_ones- (2*(5*omega+4*kappa_star)*irlba(Hess,1,1)$d[1]*pmax(gamma,1))- (4*kappa_star+5*omega)*irlba(Hess,1,1)$d[1]*(degree/gamma+1)
+  
+  Delta_norm <- 1/alpha_tilde*(2*(5*omega+4*kappa_star)*irlba(Hess,1,1)$d[1]*pmax(gamma,1)+(4*kappa_star+5*omega)*irlba(Hess,1,1)$d[1]*(degree/gamma+1))
+  
+  term_1 <- (2*delta_2+2*irlba(Hess,1,1)$d[1]*pmax(gamma,1)*(4*kappa_star+5*omega)+irlba(Hess,1,1)$d[1]*(degree/gamma+1)*(4*kappa_star+5*omega))*(Delta_norm+4*kappa_star+5*omega)/alpha_all_ones
+  term_2 <- delta*(1+5*omega+4*kappa_star)+irlba(Hess,1,1)$d[1]*pmax(gamma,1)*(5*omega+4*kappa_star)*(1+5*omega+4*kappa_star)/alpha_all_ones
+  term_3 <-irlba(Hess,1,1)$d[1]*pmax(gamma,1)*(5*omega+4*kappa_star)*(1+degree/gamma)*(1+5*omega+4*kappa_star)/alpha_all_ones
+  
+  delta_tild <- term_1+term_2+term_3
+  
+  ## checks
+  F <- irlba((diag(p)-P_C)%*%matrix(1,p,p)%*%(diag(p)-P_C),1,1)$u[,1]%*%t(irlba((diag(p)-P_C)%*%matrix(1,p,p)%*%(diag(p)-P_C),1,1)$u[,1])
+  
+  
+  check_0 <- ((alpha_tilde>=0)*(delta_tild <= 1))
+  check_1 <- ((1-delta_tild)>=4*omega)
+  check_2 <- (alpha_tilde > 8*omega*pmax(gamma,1)*(irlba(Reshape(Hess%*%Reshape(F,p^2,1),p,p),1,1)$d[1]+irlba(Hess,1,1)$d[1]*omega+1))
+  check_3 <- ((kappa_star > omega)*(kappa_star <= 4*delta_tild)*(kappa_star <= alpha_tilde/(8*omega*pmax(gamma,1)*(irlba(Reshape(Hess%*%Reshape(F,p^2,1),p,p),1,1)$d[1]+irlba(Hess,1,1)$d[1]*omega+1))-omega))
+  
+  total_check <-check_0*check_1*check_2*check_3
+  
+  
+  return(list(total_check,degree,inc_star,kappa_star,delta_tild,alpha_tilde))
 }
 
 
@@ -179,6 +322,58 @@ generate_latent_model_random <- function(p, h) {
 }
 
 
+generate_latent_model_random_checking_assumptions <- function(p, h) {
+  
+  max_degree <- 5
+  min_degree <- 1
+  non_pos_def<- TRUE
+  not_connected <- TRUE
+  cond_val <- 5
+  while (max_degree > 4 || min_degree <1  || cond_val > 3){
+    W <- matrix(1, p + h, p + h)
+    
+    S<-as.matrix(as.matrix(as.matrix(erdos.renyi.game(p,0.04))))
+    not_connected <- !(is_connected(graph_from_adjacency_matrix(S)))
+    max_degree <- max(rowSums(S))
+    min_degree <- min(rowSums(S))
+    
+    
+    W[1:p, 1:p] <- S
+    diag(W) <- 0
+    L <- matrix(runif((p + h)^2, 0.2, 0.2), nrow = p + h)
+    L[(p + 1):(p + h), (p + 1):(p + h)] <- diag(h)
+    
+    
+    z <- 4/ (sqrt(as.integer(p / h))) * matrix(runif(as.integer(p / h), 1, 2), nrow = as.integer(p / h))
+    
+    for (i in 1:h) {
+      L[1:p, (p + i):(p + i)] <- 0
+      L[(p + i):(p + i), 1:p] <- 0
+      F<-seq(i, p, h)
+      L[F[1:length(z)], (p + i):(p + i)] <- z
+      L[(p + i):(p + i), F[1:length(z)]] <- z
+    }
+    
+    W <- W * L
+    W[lower.tri(W)] <- t(W)[lower.tri(W)]
+    Theta <- diag(rowSums(W)) - W
+    non_pos_def <- (min(eig(Theta))< -10^(-6))
+    
+    Lst <- (Theta[1:p, ((p + 1):(p + h))]) %*% solve(Theta[(p + 1):(p + h), (p + 1):(p + h)]) %*% t((Theta[1:p, ((p + 1):(p + h))]))
+    inc <- max(diag(svd(Lst)$u[, 1:h] %*% t(svd(Lst)$u[, 1:h])))
+    G <- Theta2Gamma(Theta)  
+    Lst <- (Theta[1:p, ((p + 1):(p + h))]) %*% solve(Theta[(p + 1):(p + h), (p + 1):(p + h)]) %*% t((Theta[1:p, ((p + 1):(p + h))]))
+    U<-svd(matrix(1,p,p))$u[,2:(p)]
+    Theta_obs <- U%*%solve(t(U)%*%(-G[1:p,1:p]/2)%*%(U))%*%t(U)
+   cond_val <- cond(Theta_obs+1/p*matrix(1,p,p))
+  }
+
+  return(list(Gamma = G, graph = Gamma2graph(G), Lst = Lst,Theta=Theta))
+}
+
+
+
+
 generate_latent_model_cycle <- function(p, h) {
   W <- matrix(1, p + h, p + h)
   S <- matrix(0, p, p)
@@ -196,7 +391,7 @@ generate_latent_model_cycle <- function(p, h) {
   L[(p + 1):(p + h), (p + 1):(p + h)] <- diag(h)
   
   
-  z <- 30 / (sqrt(as.integer(p / h))) * matrix(runif(as.integer(p / h), 1, 2), nrow = as.integer(p / h))
+  z <- 50 / (sqrt(as.integer(p / h))) * matrix(runif(as.integer(p / h), 1, 1.5), nrow = as.integer(p / h))
   
   for (i in 1:h) {
     L[1:p, (p + i):(p + i)] <- 0
@@ -225,6 +420,11 @@ mychol <- function(M){
   }
   return(R)
 }
+
+
+
+
+
 
 
 
@@ -450,10 +650,10 @@ rep_tibble_new <- function(tbl, m){
 
 generate_BA_model <- function(d,m){
   g <- sample_pa(n=d, m=m, zero.appeal=1,directed=FALSE)
-  W <- as_adj(g, sparse=F) * matrix(runif(d^2,2, 5), nrow=d) #matrix(2 + rexp(d^2, rate = 1), nrow=d) #matrix(runif(d^2,2, 5), nrow=d) #  # 
+  W <- as_adj(g) * matrix(runif(d^2,2, 5), nrow=d) #matrix(2 + rexp(d^2, rate = 1), nrow=d) #matrix(runif(d^2,2, 5), nrow=d) #  # 
   W[lower.tri(W)] <- t(W)[lower.tri(W)]
   O <- diag(rowSums(W)) - W
-  G <- Theta2Gamma(O)
+  G <- Theta2Gamma(as.matrix(O))
   return(list(G = G, graph = Gamma2graph(G)))
 }
 
