@@ -11,7 +11,7 @@ source(here("functions/functions_paper.R"))
 
 load(file=here("simulations/data/data_zero_latent.Rdata"))
 
-
+d<-20
 dat_lik <- bind_rows(
   tibble(method = "gamma=1", val=data$likelihood_vec[[1]], nb_edges = mean(data$sparsity_vec[[1]])*(d*(d-1)/2)),
   tibble(method = "gamma=2", val=data$likelihood_vec[[2]], nb_edges = mean(data$sparsity_vec[[2]])*(d*(d-1)/2)),

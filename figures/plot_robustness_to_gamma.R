@@ -7,7 +7,7 @@ library(ggpubr)
 
 
 source(here("functions/functions_paper.R"))
-load(here("simulations/data/random_graph_data_k0.65.Rdata"))
+load(here("simulations/data/robustness_to_gamma.Rdata"))
 
 
 
