@@ -108,7 +108,7 @@ gg3
 
 gg_all <- ggarrange(gg1,NULL,gg2, NULL, gg3, nrow=5, align = "hv",heights = c(1, 0.1, 1, 0.1, 1))
 
-save_myplot(gg_all, plt_nm = here("figures/plots/simu_combined.pdf"), width = 9, height = 10)
+save_myplot(gg_all, plt_nm = here("figures/plots/simu_combined_robustness.pdf"), width = 9, height = 10)
 
 
 
